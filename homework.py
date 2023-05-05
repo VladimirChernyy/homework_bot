@@ -34,20 +34,20 @@ logging.basicConfig(
 def check_tokens():
     """Проверка токенов на наличие."""
     tokens = {
-        PRACTICUM_TOKEN,
-        TELEGRAM_TOKEN,
-        TELEGRAM_CHAT_ID,
+        'PRACTICUM_TOKEN': PRACTICUM_TOKEN,
+        'TELEGRAM_TOKEN': TELEGRAM_TOKEN,
+        'TELEGRAM_CHAT_ID': TELEGRAM_CHAT_ID,
     }
-    return all(tokens)
+    for token, value in tokens.items():
+        if value is None:
+            logging.critical(f'Токе {token} отсутствует')
+            exit()
 
 
 def send_message(bot, message):
     """Отправка сообщения."""
-    try:
-        logging.debug('Сообщение отправлено')
-        bot.send_message(TELEGRAM_CHAT_ID, message)
-    except Exception as error:
-        logging.error(error)
+    bot.send_message(TELEGRAM_CHAT_ID, message)
+    logging.debug(f'Сообщение {message} отправлено')
 
 
 def get_api_answer(timestamp):
@@ -57,15 +57,12 @@ def get_api_answer(timestamp):
     }
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
-    except requests.RequestException as e:
-        logging.error(e)
-        raise HTTPError(e)
+    except requests.RequestException as error:
+        logging.error(error)
+        raise HTTPError(error)
     if response.status_code != HTTPStatus.OK:
         logging.error(f'Неверный ответ Api {response}')
         raise HTTPError(response)
-    if response is None:
-        message = 'Доступ к API не получен'
-        logging.error(message)
     return response.json()
 
 
@@ -79,54 +76,47 @@ def check_response(response):
         message = 'Неверный тип данных ответа'
         logging.error(message)
         raise TypeError(message)
-    return response.get('homeworks')
 
 
 def parse_status(homework):
     """Отслеживание статуса домашней работы."""
-    if not homework.get('homework_name'):
-        logging.warning('Отсутствует имя домашней работы')
-        raise KeyError
-    else:
-        homework_name = homework.get('homework_name')
-
+    for key in homework:
+        if 'homework_name' not in homework:
+            message = f'Отсутствует {key} домашней работы'
+            logging.warning(message)
+            raise KeyError(message)
+    homework_name = homework.get('homework_name')
     homework_status = homework.get('status')
-    if 'status' not in homework:
-        status = 'Отсутствует статус выполненной работы'
-        logging.warning('Отсутствует статус выполненной работы')
-        raise KeyError(status)
-
     verdict = HOMEWORK_VERDICTS.get(homework_status)
     if homework_status not in HOMEWORK_VERDICTS:
-        verdict = 'Неверный ключ проверки'
-        logging.warning(verdict)
-        raise KeyError
+        message = 'Неверный ключ проверки'
+        raise KeyError(message)
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def main():
     """Основная логика работы бота."""
-    if not check_tokens():
-        logging.critical(
-            'Oтсутствие обязательных переменных'
-            ' окружения во время запуска бота'
-        )
-        exit()
+    check_tokens()
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = 0
     while True:
         try:
             response = get_api_answer(timestamp)
-            homeworks = check_response(response)
-            if len(homeworks) == 0:
-                message = 'Статус домашнего задания не изменен'
-                logging.error(message)
-                time.sleep(RETRY_PERIOD)
+            check_response(response)
+            homeworks = response.get('homeworks')
             if homeworks:
                 for homework in homeworks:
                     message = parse_status(homework)
                     send_message(bot, message)
                 timestamp = response.get('current_date')
+            else:
+                message = 'Нет домашних работ'
+                logging.debug(message)
+                time.sleep(RETRY_PERIOD)
+        except telegram.TelegramError as error:
+            message = f'Ошибка отправки в телеграмм {error}'
+            logging.error(message)
+            raise telegram.TelegramError(message)
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             send_message(bot, message)
