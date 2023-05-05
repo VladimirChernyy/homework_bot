@@ -40,8 +40,11 @@ def check_tokens():
     }
     for token, value in tokens.items():
         if value is None:
-            logging.critical(f'Токе {token} отсутствует')
-            exit()
+            logging.critical(f'Токен {token} отсутствует')
+    if all(tokens.values()):
+        return
+    else:
+        exit()
 
 
 def send_message(bot, message):
@@ -80,8 +83,12 @@ def check_response(response):
 
 def parse_status(homework):
     """Отслеживание статуса домашней работы."""
-    for key in homework:
-        if 'homework_name' not in homework:
+    homework_key = (
+        'homework_name',
+        'status',
+    )
+    for key in homework_key:
+        if key not in homework:
             message = f'Отсутствует {key} домашней работы'
             logging.warning(message)
             raise KeyError(message)
@@ -112,11 +119,9 @@ def main():
             else:
                 message = 'Нет домашних работ'
                 logging.debug(message)
-                time.sleep(RETRY_PERIOD)
         except telegram.TelegramError as error:
             message = f'Ошибка отправки в телеграмм {error}'
             logging.error(message)
-            raise telegram.TelegramError(message)
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             send_message(bot, message)
