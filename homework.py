@@ -33,7 +33,7 @@ logging.basicConfig(
 
 def check_tokens():
     """Проверка токенов на наличие."""
-    flag = False
+    unavailable_token = False
     tokens = {
         'PRACTICUM_TOKEN': PRACTICUM_TOKEN,
         'TELEGRAM_TOKEN': TELEGRAM_TOKEN,
@@ -42,8 +42,8 @@ def check_tokens():
     for token, value in tokens.items():
         if value is None:
             logging.critical(f'Токен {token} отсутствует')
-            flag = True
-    if flag:
+            unavailable_token = True
+    if unavailable_token:
         exit()
 
 
