@@ -41,10 +41,7 @@ def check_tokens():
     for token, value in tokens.items():
         if value is None:
             logging.critical(f'Токен {token} отсутствует')
-    if all(tokens.values()):
-        return
-    else:
-        exit()
+    if not all(tokens.values()): exit()
 
 
 def send_message(bot, message):
