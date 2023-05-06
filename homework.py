@@ -33,7 +33,7 @@ logging.basicConfig(
 
 def check_tokens():
     """Проверка токенов на наличие."""
-    flag = True
+    flag = False
     tokens = {
         'PRACTICUM_TOKEN': PRACTICUM_TOKEN,
         'TELEGRAM_TOKEN': TELEGRAM_TOKEN,
@@ -42,8 +42,8 @@ def check_tokens():
     for token, value in tokens.items():
         if value is None:
             logging.critical(f'Токен {token} отсутствует')
-            flag = False
-    if flag is not True:
+            flag = True
+    if flag:
         exit()
 
 
@@ -96,8 +96,7 @@ def parse_status(homework):
     homework_status = homework.get('status')
     verdict = HOMEWORK_VERDICTS.get(homework_status)
     if homework_status not in HOMEWORK_VERDICTS:
-        message = f'{homework_status} - это неверный ключ'
-        raise KeyError(message)
+        raise KeyError(f'{homework_status} - это неверный ключ')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
